@@ -122,7 +122,6 @@ void transmitData() {
   char microseverts[6];
   dtostrf(cpm * conversion_factor, 4, 2, microseverts);
   char buffer[50];
-  //MightyOhm format https://mightyohm.com/blog/products/geiger-counter/usage-instructions/
   sprintf(buffer, "CPS,%ld,CPM,%ld,uSv/hr,%s\n", cps, cpm, microseverts);
   Serial.print(buffer);
 }
