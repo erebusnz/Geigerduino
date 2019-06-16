@@ -2,7 +2,7 @@
 
 Geigerduino Serial Geiger–Müller Counter
 
-*Compatible with RadiationD-v1.1-CAJOE, 52DZ-DIY.com marked boards*
+*Compatible with RadiationD-v1.1-CAJOE, 52DZ-DIY.com marked boards and many more with 5v trigger output*
 
 Conversion factor is for J305 marked tube only. Update to match your tube. See https://www.cooking-hacks.com/documentation/tutorials/geiger-counter-radiation-sensor-board-arduino-raspberry-pi-tutorial#cpm_to_servants
 
