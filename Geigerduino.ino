@@ -2,7 +2,7 @@
  * Geigerduino Serial Geiger–Müller Counter
  * 
  * @author stig@sdm.nz
- * @version 0.1
+ * @version 0.2
  * @license GNU GPLv3
  * 
  * Compatible with RadiationD-v1.1-CAJOE, 52DZ-DIY.com marked boards
@@ -26,7 +26,10 @@ const float conversion_factor =  0.008120; //GM tube J305ß, see https://www.coo
 const int NULLDATA = ULONG_MAX;
 volatile unsigned long counts = 0;
 volatile unsigned long cpslogger[LOGGER_SIZE];
+volatile unsigned long last_cpm = 0;
 volatile int log_index = 0;
+int last_log_index = 0;
+int last_obs = 60;
 unsigned long previous_millis = 0;
 
 /**
@@ -66,9 +69,7 @@ void setup() {
  * 
  * Maximum size is array length
  */
-int getData(int size, int period) {
-  //Obtain log_index at start (volatile)
-  int current_index = log_index;
+int getData(int size, int period, int current_index) {
   int observations = 0;
   //Max size is logger array length
   if (size > LOGGER_SIZE)
@@ -117,12 +118,33 @@ void recordData() {
  * Sends CPS, CPM and radiation dose over Serial
  */
 void transmitData() {
-  unsigned long cps = getData(TX_FREQUENCY/1000, 1); //X observations / s
-  unsigned long cpm = getData(60, 60); //60 observations / 60s (minute)
+  //Obtain log_index at start (volatile)
+  int current_index = log_index;
+  unsigned long cps = getData(TX_FREQUENCY/1000, 1, current_index); //X observations / s
+  
+  //Find optimal observations for current CPM
+  int obs;
+  if (last_cpm < 30) {
+    obs = 60; // Max 60 observations for update latency
+  } else if (last_cpm > 320) {
+    obs = 3; // Min 3 observations for accuracy
+  } else {
+    obs = (60.0f/last_cpm) * 20; //Ensure 60 observations per 20 CPM
+  }
+  
+  //Limit observations so we don't extend observations into earlier high counts when ramping down
+  int max_obs = last_obs + (log_index - last_log_index < 0 ? LOGGER_SIZE + log_index - last_log_index : log_index - last_log_index);
+  if (obs > max_obs)
+    obs = max_obs;
+  
+  unsigned long cpm = getData(obs, 60, current_index);
+  last_obs = obs;
+  last_log_index = current_index;
+  last_cpm = cpm;
   char microseverts[6];
   dtostrf(cpm * conversion_factor, 4, 2, microseverts);
   char buffer[50];
-  sprintf(buffer, "CPS,%ld,CPM,%ld,uSv/hr,%s\n", cps, cpm, microseverts);
+  sprintf(buffer, "CPS,%ld,CPM,%ld,OBS,%1d,uSv/hr,%s\r\n", cps, cpm, obs, microseverts);
   Serial.print(buffer);
 }
 
